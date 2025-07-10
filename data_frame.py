@@ -54,7 +54,7 @@ class DataFrame:
         self.is_faint()
         self.fill()
         self.make_colors()
-        # self.train_val_test_split()
+        self.train_val_test_split()
         self.data["Z_pred"] = 0
         self.data["Z_pred_std"] = 0
         
@@ -72,7 +72,6 @@ class DataFrame:
 
     def fill(self):
         if self.filler:
-            self.data = self.data.replace(VALUES_TO_FILL, np.nan)
             self.data = self.filler.fill(self.data)
 
     def is_faint(self):
