@@ -2,6 +2,7 @@ import tensorflow as tf
 import xgboost as xgb
 import tensorflow_probability as tfp
 import tf_keras
+import numpy as np
 from abc import ABC, abstractmethod
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.model_selection import train_test_split
@@ -56,9 +57,9 @@ class ANNRegressor(MLStrategy):
         
     def create_network(self):
         model = tf.keras.Sequential()
-        model.add(tf.keras.layers.Dense(256, kernel_initializer='normal', activation='relu', input_dim=55))
+        model.add(tf.keras.layers.Dense(256, kernel_initializer='he_normal', activation='relu', input_dim=55))
         for i in range(10):
-            model.add(tf.keras.layers.Dense(256, kernel_initializer='normal', activation='relu'))
+            model.add(tf.keras.layers.Dense(256, kernel_initializer='he_normal', activation='relu'))
         model.add(tf.keras.layers.Dense(1))
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.lr),
@@ -90,22 +91,22 @@ class ANNSingleGauss(MLStrategy):
         self.tensorboard_callback = None
 
         self.callbacks.append(tf_keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
-                                                           patience=30, verbose=1, start_from_epoch=1, restore_best_weights=True))
+                                                           patience=30, verbose=1, start_from_epoch=30, restore_best_weights=True))
 
         self.create_network()
         
     def create_network(self):
-        model = tf_keras.Sequential([Dense(256, kernel_initializer='normal', activation='relu', input_shape=(55,)),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
-                                     Dense(256, kernel_initializer='normal', activation='relu'),
+        model = tf_keras.Sequential([Dense(256, kernel_initializer='he_normal', activation='relu', input_shape=(55,)),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
                                      Dense(2),
                                      tfp.layers.DistributionLambda(lambda t: tfd.Normal(loc=t[..., :1],
                                                                                         scale=1e-3 + tf.math.softplus(0.05 * t[...,1:]))),
@@ -134,6 +135,68 @@ class ANNSingleGauss(MLStrategy):
         y_std = y_model.stddev().numpy()
         
         self.dataFrame.data.loc[indexes, "Z_pred"] = y_hat
+        self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
+
+class ANNDoubleGauss(MLStrategy):
+    def __init__(self, dataFrame):
+        super().__init__(dataFrame)
+        self.network = None
+        self.scaler = StandardScaler()
+        self.epochs = 300
+        self.batch_size = 128
+        self.lr = 0.0001
+        self.callbacks = []
+        self.tensorboard_callback = None
+
+        self.callbacks.append(tf_keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
+                                                           patience=30, verbose=1, start_from_epoch=30, restore_best_weights=True))
+
+        self.create_network()
+        
+    def create_network(self):
+        model = tf_keras.Sequential([Dense(256, kernel_initializer='he_normal', activation='relu', input_shape=(55,)),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+                                     Dense(6),
+                                     tfp.layers.DistributionLambda(lambda t: tfd.MixtureSameFamily(
+                                         mixture_distribution=tfd.Categorical(logits=t[...,:2]),
+                                         components_distribution=tfd.Normal(loc=t[...,2:4],
+                                                                            scale=1e-3 + tf.nn.softplus(0.05 * t[..., 4:6]))))])
+
+        negloglik = lambda y, p_y: -p_y.log_prob(y)
+
+        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=self.lr),
+                      loss=negloglik)
+        
+        self.network = model
+        
+
+    def train(self):
+        self.X_train = self.scaler.fit_transform(self.X_train)
+        self.X_val = self.scaler.transform(self.X_val)
+        
+        self.network.fit(self.X_train, self.y_train, validation_data=(self.X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
+                         callbacks=self.callbacks, verbose=0)
+        
+    def test_predict(self):
+        indexes = self.X_test.index
+        self.X_test = self.scaler.transform(self.X_test)
+        y_model = self.network(self.X_test)
+        y_samples = y_model.sample(10000).numpy()
+        y_pred = np.median(y_samples)
+        lower = np.percentile(y_samples, 16)
+        upper = np.percentile(y_samples, 84)
+        y_std = (upper - lower) / 2
+        
+        self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
         self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
         
 
