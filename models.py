@@ -154,22 +154,27 @@ class ANNDoubleGauss(MLStrategy):
         self.create_network()
         
     def create_network(self):
-        model = tf_keras.Sequential([Dense(256, kernel_initializer='he_normal', activation='relu', input_shape=(55,)),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(6),
-                                     tfp.layers.DistributionLambda(lambda t: tfd.MixtureSameFamily(
-                                         mixture_distribution=tfd.Categorical(logits=t[...,:2]),
-                                         components_distribution=tfd.Normal(loc=t[...,2:4],
-                                                                            scale=1e-3 + tf.nn.softplus(0.05 * t[..., 4:6]))))])
+        num_components = 2
+        event_shape = [1]
+        params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
+        
+        model = tf_keras.Sequential([Dense(256, kernel_initializer='normal', activation='relu', input_shape=(55,)),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(params_size),
+                                     tfp.layers.MixtureNormal(num_components, event_shape)])
+                                     # tfp.layers.DistributionLambda(lambda t: tfd.MixtureSameFamily(
+                                     #     mixture_distribution=tfd.Categorical(logits=t[...,:2]),
+                                     #     components_distribution=tfd.Normal(loc=t[...,2:4],
+                                     #                                        scale=1e-3 + tf.nn.softplus(0.05 * t[..., 4:6]))))])
 
         negloglik = lambda y, p_y: -p_y.log_prob(y)
 
@@ -190,10 +195,10 @@ class ANNDoubleGauss(MLStrategy):
         indexes = self.X_test.index
         self.X_test = self.scaler.transform(self.X_test)
         y_model = self.network(self.X_test)
-        y_samples = y_model.sample(10000).numpy()
-        y_pred = np.median(y_samples)
-        lower = np.percentile(y_samples, 16)
-        upper = np.percentile(y_samples, 84)
+        y_samples = y_model.sample(1000).numpy().reshape(-1, 30044)
+        y_pred = np.median(y_samples, axis=0)
+        lower = np.percentile(y_samples, 16, axis=0)
+        upper = np.percentile(y_samples, 84, axis=0)
         y_std = (upper - lower) / 2
         
         self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
