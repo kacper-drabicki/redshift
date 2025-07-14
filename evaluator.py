@@ -10,6 +10,7 @@ class Evaluator():
     def __init__(self, dataFrame):
         self.dataFrame = dataFrame
         self.test_data = self.dataFrame.data[self.dataFrame.data["split"] == "test"]
+        # self.test_data = self.test_data.loc[self.test_data["MAG_GAAP_r"] < 25.0]
         self.y_test = self.test_data.loc[~self.test_data["faint"], "Z"]
         self.y_pred = self.test_data.loc[~self.test_data["faint"], "Z_pred"]
         self.y_pred_std = self.test_data.loc[~self.test_data["faint"], "Z_pred_std"]
@@ -32,7 +33,7 @@ class Evaluator():
                 "Redshift error": self.redshift_error(self.faint_test, self.faint_pred)}
                }).T
 
-    def redshift_with_std_plot(self):
+    def redshift_std(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
         combined = list(zip(self.y_test, self.y_pred, self.y_pred_std))
@@ -82,8 +83,8 @@ class Evaluator():
 
         plt.tight_layout()
         plt.show()
-    
-    def redshift_plot(self):
+
+    def redshift_kde(self):
         sns.set(style="whitegrid")
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
         

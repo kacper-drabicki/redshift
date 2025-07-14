@@ -40,7 +40,7 @@ class MinFiller(MissingValueFiller):
 
 class DataFrame:
     
-    def __init__(self, filePath, objtype, filler=None):
+    def __init__(self, filePath, objtype, filler=None, process=True):
         self.filler = filler
         self.filePath = filePath
         self.objtype = objtype
@@ -48,15 +48,16 @@ class DataFrame:
         self.features = MAGNITUDES + COLORS
 
         self.load()
-        self.data = self.data.replace(VALUES_TO_FILL, np.nan)
-        self.data["split"] = "train"
-        self.data["faint"] = False
-        self.is_faint()
-        self.fill()
-        self.make_colors()
-        self.train_val_test_split()
-        self.data["Z_pred"] = 0
-        self.data["Z_pred_std"] = 0
+        if process:
+            self.data = self.data.replace(VALUES_TO_FILL, np.nan)
+            self.data["split"] = "train"
+            self.data["faint"] = False
+            self.is_faint()
+            self.fill()
+            self.make_colors()
+            self.train_val_test_split()
+            self.data["Z_pred"] = 0
+            self.data["Z_pred_std"] = 0
         
 
     def set_filler(self, filler: MissingValueFiller):

@@ -57,9 +57,9 @@ class ANNRegressor(MLStrategy):
         
     def create_network(self):
         model = tf.keras.Sequential()
-        model.add(tf.keras.layers.Dense(256, kernel_initializer='he_normal', activation='relu', input_dim=55))
+        model.add(tf.keras.layers.Dense(256, kernel_initializer='normal', activation='relu', input_dim=55))
         for i in range(10):
-            model.add(tf.keras.layers.Dense(256, kernel_initializer='he_normal', activation='relu'))
+            model.add(tf.keras.layers.Dense(256, kernel_initializer='normal', activation='relu'))
         model.add(tf.keras.layers.Dense(1))
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.lr),
@@ -96,17 +96,17 @@ class ANNSingleGauss(MLStrategy):
         self.create_network()
         
     def create_network(self):
-        model = tf_keras.Sequential([Dense(256, kernel_initializer='he_normal', activation='relu', input_shape=(55,)),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
-                                     Dense(256, kernel_initializer='he_normal', activation='relu'),
+        model = tf_keras.Sequential([Dense(256, kernel_initializer='normal', activation='relu', input_shape=(55,)),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
+                                     Dense(256, kernel_initializer='normal', activation='relu'),
                                      Dense(2),
                                      tfp.layers.DistributionLambda(lambda t: tfd.Normal(loc=t[..., :1],
                                                                                         scale=1e-3 + tf.math.softplus(0.05 * t[...,1:]))),
