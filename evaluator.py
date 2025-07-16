@@ -34,6 +34,8 @@ class Evaluator():
                }).T
 
     def redshift_std(self):
+        random.seed(0)
+        
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
         combined = list(zip(self.y_test, self.y_pred, self.y_pred_std))
@@ -60,7 +62,7 @@ class Evaluator():
         cbar1.set_label("Z$_{photo}$ std. dev.")
 
         combined = list(zip(self.faint_test, self.faint_pred, self.faint_pred_std))
-        sampled = random.sample(combined, 1000)
+        sampled = random.sample(combined, 1000,)
         faint_test, faint_pred, faint_pred_std = zip(*sampled)
 
         sc2 = ax2.scatter(faint_test, faint_pred,
@@ -82,7 +84,11 @@ class Evaluator():
         cbar2.set_label("Z$_{photo}$ std. dev.")
 
         plt.tight_layout()
+
+        plt.savefig("../../plots/plot.png")
         plt.show()
+
+        
 
     def redshift_kde(self):
         sns.set(style="whitegrid")
