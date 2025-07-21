@@ -14,9 +14,11 @@ class Evaluator():
         self.y_test = self.test_data.loc[~self.test_data["faint"], "Z"]
         self.y_pred = self.test_data.loc[~self.test_data["faint"], "Z_pred"]
         self.y_pred_std = self.test_data.loc[~self.test_data["faint"], "Z_pred_std"]
+        self.test_log_prob = self.test_data.loc[~self.test_data["faint"], "log_prob"]
         self.faint_test = self.test_data.loc[self.test_data["faint"], "Z"]
         self.faint_pred = self.test_data.loc[self.test_data["faint"], "Z_pred"]
         self.faint_pred_std = self.test_data.loc[self.test_data["faint"], "Z_pred_std"]
+        self.faint_log_prob = self.test_data.loc[self.test_data["faint"], "log_prob"]
         
         self.mse = mean_squared_error
         self.r2_score = r2_score
@@ -26,11 +28,13 @@ class Evaluator():
         return pd.DataFrame({"test":
                 {"MSE": self.mse(self.y_test, self.y_pred),
                 "R^2": self.r2_score(self.y_test, self.y_pred),
-                "Redshift error": self.redshift_error(self.y_test, self.y_pred)},
+                "Redshift error": self.redshift_error(self.y_test, self.y_pred),
+                "NLL": self.test_log_prob.mean()},
                 "faint":
                 {"MSE": self.mse(self.faint_test, self.faint_pred),
                 "R^2": self.r2_score(self.faint_test, self.faint_pred),
-                "Redshift error": self.redshift_error(self.faint_test, self.faint_pred)}
+                "Redshift error": self.redshift_error(self.faint_test, self.faint_pred),
+                "NLL": self.faint_log_prob.mean()}
                }).T
 
     def redshift_std(self):
@@ -42,11 +46,14 @@ class Evaluator():
         sampled = random.sample(combined, 500)
         y_test, y_pred, y_pred_std = zip(*sampled)
 
+
         sc1 = ax1.scatter(y_test, y_pred,
                           c=y_pred_std,
                           cmap='rainbow',
                           s=20,
-                          alpha=0.5
+                          alpha=0.5,
+                          vmin=0,
+                          vmax=1.2,
                          )
         ax1.plot([0,4],
                  [0,4],
@@ -69,7 +76,9 @@ class Evaluator():
                           c=faint_pred_std,
                           cmap='rainbow',
                           s=20,
-                          alpha=0.5
+                          alpha=0.5,
+                          vmin=0,
+                          vmax=1.2,
                          )
         ax2.plot([0,4],
                  [0,4],
