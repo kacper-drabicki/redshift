@@ -94,7 +94,6 @@ class Evaluator():
 
         plt.tight_layout()
 
-        plt.savefig("../../plots/plot.png")
         plt.show()
 
         

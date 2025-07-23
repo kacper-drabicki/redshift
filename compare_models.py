@@ -21,7 +21,7 @@ class CompareModels:
     def getModelNames(self):
         for path in self.filePaths:
             filename = path.split('/')[-1]
-            match = re.match(r'(.+)_\d+\.csv', filename)
+            match = re.match(r'(.+?)(?:_\d+)?\.csv$', filename)
             if match:
                 self.modelNames.append(match.group(1))
 

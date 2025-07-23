@@ -90,7 +90,7 @@ class ANNSingleGauss(MLStrategy):
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
-        log_dir = "../../logs/fit/" + "SG" +datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_dir = "../logs/fit/" + "SG" +datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         self.callbacks.append(self.tensorboard_callback)
         self.callbacks.append(tf_keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
@@ -153,7 +153,7 @@ class ANNSingleGauss(MLStrategy):
         history = self.network.fit(X_train, self.y_train, validation_data=(X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
                          callbacks=self.callbacks, verbose=0)
 
-        plotTrainHistory(history)
+        # plotTrainHistory(history)
         
     def test_predict(self):
         indexes = self.X_test.index
@@ -164,7 +164,7 @@ class ANNSingleGauss(MLStrategy):
         
         self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
         self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
-        self.dataFrame.data.loc[indexes, "log_prob"] = -y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()
+        self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
 
 class ANNDoubleGauss(MLStrategy):
     def __init__(self, dataFrame):
@@ -175,7 +175,7 @@ class ANNDoubleGauss(MLStrategy):
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
-        log_dir = "../../logs/fit/" + "DG" +datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_dir = "../logs/fit/" + "DG" +datetime.datetime.now().strftime("-%m%d-%H-%M")
         self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         self.callbacks.append(self.tensorboard_callback)
         self.callbacks.append(tf_keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
@@ -249,7 +249,7 @@ class ANNDoubleGauss(MLStrategy):
         y_std = y_model.stddev().numpy()
         self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
         self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
-        self.dataFrame.data.loc[indexes, "log_prob"] = -y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()
+        self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
 
         # # Median, stddev()
         # indexes = self.X_test.index
@@ -282,7 +282,7 @@ class ANNTripleGauss(MLStrategy):
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
-        log_dir = "../../logs/fit/" + "TG" +datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_dir = "../logs/fit/" + "TG" +datetime.datetime.now().strftime("-%m%d-%H-%M")
         self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         self.callbacks.append(self.tensorboard_callback)
         self.callbacks.append(tf_keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
@@ -356,7 +356,7 @@ class ANNTripleGauss(MLStrategy):
         y_std = y_model.stddev().numpy()
         self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
         self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
-        self.dataFrame.data.loc[indexes, "log_prob"] = -y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()
+        self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
 
 class ANNQuadrupleGauss(MLStrategy):
     def __init__(self, dataFrame):
