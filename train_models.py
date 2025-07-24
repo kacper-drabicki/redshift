@@ -9,9 +9,9 @@ filePath = "../KiDS-DR5-WCScut_x_DESI-DR1-small.fits"
 for i in range(1,6):
     df = data_frame.DataFrame(filePath, "QSO", data_frame.MaxFiller())
 
-    model = models.MLModelContext(strategy=models.ANNDoubleGauss(df))
+    model = models.MLModelContext(strategy=models.ANNRegresor(df))
     model.train()
     model.test_predict()
 
-    model.strategy.network.save(f"../models/double_gauss_{i}")
-    df.data.to_csv(f"../dataframes/double_gauss_{i}")
+    model.strategy.network.save(f"../models/{model.getModelName()}_{i}")
+    df.data.to_csv(f"../dataframes/{model.getModelName}_{i}")

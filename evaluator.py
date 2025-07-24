@@ -14,11 +14,11 @@ class Evaluator():
         self.y_test = self.test_data.loc[~self.test_data["faint"], "Z"]
         self.y_pred = self.test_data.loc[~self.test_data["faint"], "Z_pred"]
         self.y_pred_std = self.test_data.loc[~self.test_data["faint"], "Z_pred_std"]
-        self.test_log_prob = self.test_data.loc[~self.test_data["faint"], "log_prob"]
+        self.test_log_prob = self.test_data.loc[~self.test_data["faint"], "Z_spec_prob"]
         self.faint_test = self.test_data.loc[self.test_data["faint"], "Z"]
         self.faint_pred = self.test_data.loc[self.test_data["faint"], "Z_pred"]
         self.faint_pred_std = self.test_data.loc[self.test_data["faint"], "Z_pred_std"]
-        self.faint_log_prob = self.test_data.loc[self.test_data["faint"], "log_prob"]
+        self.faint_log_prob = self.test_data.loc[self.test_data["faint"], "Z_spec_prob"]
         
         self.mse = mean_squared_error
         self.r2_score = r2_score
