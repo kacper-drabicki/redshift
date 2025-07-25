@@ -101,4 +101,11 @@ class DataFrame:
     def get_test_dataset(self):
         return self.data[self.data["split"] == "test"][self.features], self.data[self.data["split"] == "test"]["Z"]
 
+    def get_random_test_dataset(self): 
+        return self.data[(self.data["split"] == "test") & (~self.data["faint"])][self.features], self.data[(self.data["split"] == "test") & (~self.data["faint"])]["Z"]
+    
+    def get_faint_test_dataset(self):
+        return self.data[(self.data["split"] == "test") & (self.data["faint"])][self.features], self.data[(self.data["split"] == "test") & (self.data["faint"])]["Z"]
+        
+
 

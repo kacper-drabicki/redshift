@@ -9,7 +9,7 @@ filePath = "../KiDS-DR5-WCScut_x_DESI-DR1-small.fits"
 for i in range(1,6):
     df = data_frame.DataFrame(filePath, "QSO", data_frame.MaxFiller())
 
-    model = models.MLModelContext(strategy=models.ANNRegresor(df))
+    model = models.MLModelContext(strategy=models.MixtureGaussian(df))
     model.train()
     model.test_predict()
 
