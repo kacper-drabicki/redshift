@@ -90,13 +90,16 @@ class DataFrame:
     def train_val_test_split(self):
         rng = np.random.default_rng(seed=42)
         self.data.loc[~self.data["faint"],"split"] = rng.choice(['train', 'val', 'test'], size=len(self.data[~self.data["faint"]]), p=[0.8, 0.1, 0.1])
-        self.data.loc[self.data["faint"],"split"] = "test"
+        self.data.loc[self.data["faint"],"split"] = rng.choice(['val', 'test'], size=len(self.data[self.data["faint"]]), p=[0.5,0.5])
 
     def get_train_dataset(self):
         return self.data[self.data["split"] == "train"][self.features], self.data[self.data["split"] == "train"]["Z"]
 
     def get_val_dataset(self):
-        return self.data[self.data["split"] == "val"][self.features], self.data[self.data["split"] == "val"]["Z"]
+        return self.data[(self.data["split"] == "val") & (~self.data["faint"])][self.features], self.data[(self.data["split"] == "val") & (~self.data["faint"])]["Z"]
+
+    def get_faint_val_dataset(self):
+        return self.data[(self.data["split"] == "val") & (self.data["faint"])][self.features], self.data[(self.data["split"] == "val") & (self.data["faint"])]["Z"]
 
     def get_test_dataset(self):
         return self.data[self.data["split"] == "test"][self.features], self.data[self.data["split"] == "test"]["Z"]

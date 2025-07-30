@@ -69,6 +69,8 @@ def dist_plot(x_input, true_y, model, points=np.arange(0, 6, 0.01)):
     ax.axvline(y_pred, color='black', linestyle='--', label='Pred value')
     ax.set_xlim(-0.05, 4.5)
     ax.legend()
+    
     plt.tight_layout()
+    
     return fig
     

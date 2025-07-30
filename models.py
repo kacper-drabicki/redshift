@@ -5,7 +5,7 @@ import tf_keras
 import numpy as np
 import datetime
 from abc import ABC, abstractmethod
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from tf_keras.layers import Dense, Dropout
 from plotting_functions import diag_plot, dist_plot
@@ -44,32 +44,34 @@ class XGBRegressor(MLStrategy):
         self.dataFrame.data.loc[self.X_test.index, "Z_pred"] = self.model.predict(self.X_test)
 
 class ANNRegressor(MLStrategy):
-    def __init__(self, dataFrame):
+    def __init__(self, dataFrame, config):
         super().__init__(dataFrame)
+        self.config = config
         self.network = None
         self.scaler = StandardScaler()
         self.epochs = 300
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
-        log_dir = "../logs/fit/" + f"{self.getModelName()}" +datetime.datetime.now().strftime("-%m%d-%H-%M")
-        self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        timestamp = datetime.datetime.now().strftime("-%m%d-%H-%M")
+        loss_log_dir = f"../logs/fit/loss/{self.getModelName()}{timestamp}"
+        self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=loss_log_dir, histogram_freq=1)
         
         self.callbacks.append(self.tensorboard_callback)
-        self.callbacks.append(tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
+        self.callbacks.append(tf_keras.callbacks.EarlyStopping(monitor='val_loss', mode='min',
                                                            patience=30, verbose=1, start_from_epoch=1))
 
         self.create_network()
         
     def create_network(self):
-        model = tf.keras.Sequential()
-        model.add(tf.keras.layers.Dense(256, kernel_initializer='normal', activation='relu', input_dim=55))
-        for i in range(10):
-            model.add(tf.keras.layers.Dense(256, kernel_initializer='normal', activation='relu'))
-        model.add(tf.keras.layers.Dense(1))
+        model = tf_keras.Sequential()
+        model.add(tf_keras.layers.Dense(512, kernel_initializer='normal', activation='relu', input_dim=55))
+        for i in range(11):
+            model.add(tf_keras.layers.Dense(512, kernel_initializer='normal', activation='relu'))
+        model.add(tf_keras.layers.Dense(1))
 
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.lr),
-                      loss=tf.keras.losses.MeanSquaredError())
+        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=self.lr),
+                      loss=tf_keras.losses.MeanSquaredError())
         self.network = model
 
     def train(self):
@@ -93,7 +95,7 @@ class MixtureGaussian(MLStrategy):
         self.config = config
         self.network = None
         self.scaler = StandardScaler()
-        self.epochs = 2
+        self.epochs = 300
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
@@ -115,8 +117,8 @@ class MixtureGaussian(MLStrategy):
             figure = diag_plot(y_test, test_pred, test_std, y_faint, faint_pred, faint_std)
             image = plot_to_image(figure)
     
-            with file_writer.as_default():
-                tf.summary.image(f"{self.getModelName()}_diag_plot", image, step=epoch)
+            with plots_file_writer.as_default():
+                tf.summary.image(f"Diag_plot", image, step=epoch)
     
             X_all = self.X_test.copy()
             y_all = self.y_test.copy()
@@ -130,20 +132,38 @@ class MixtureGaussian(MLStrategy):
                 true_y = y_all.loc[idx]
                 fig = dist_plot(x_input, true_y, self.network)
                 image = plot_to_image(fig)
-                with file_writer.as_default():
-                    tf.summary.image(f"{self.getModelName()}_distribution_sample_{idx}", image, step=epoch)
-    
+                with plots_file_writer.as_default():
+                    tf.summary.image(f"Distribution_sample_{idx}", image, step=epoch)
+
+        class MyCustomCallback(tf_keras.callbacks.Callback):
+            def __init__(self, scaler, X_faint_val, y_faint_val, log_dir):
+                super().__init__()
+                self.scaler = scaler
+                self.X_test = X_faint_val
+                self.y_test = y_faint_val
+                self.writer = tf.summary.create_file_writer(log_dir)
         
+            def on_epoch_end(self, epoch, logs=None):
+                X_scaled = self.scaler.transform(self.X_test)
+                loss = self.model.evaluate(X_scaled, self.y_test, verbose=0)
+        
+                with self.writer.as_default():
+                    tf.summary.scalar(f"faint_epoch_loss", loss, step=epoch)
+      
         timestamp = datetime.datetime.now().strftime("-%m%d-%H-%M")
-        loss_log_dir = f"../../logs/fit/loss/{self.getModelName()}{timestamp}"
-        plots_log_dir = f"../../logs/fit/plots/{self.getModelName()}{timestamp}"
-        file_writer = tf.summary.create_file_writer(plots_log_dir)
-    
+        loss_log_dir = f"../logs/fit/loss/{self.getModelName()}{timestamp}"
+        plots_log_dir = f"../logs/fit/plots/{self.getModelName()}{timestamp}"
+        val_loss_log_dir = f"../logs/fit/loss/{self.getModelName()}{timestamp}/faint_validation"
+        plots_file_writer = tf.summary.create_file_writer(plots_log_dir)
+
+        X_faint_val, y_faint_val = self.dataFrame.get_faint_val_dataset()
         self.diag_plot_callback = tf_keras.callbacks.LambdaCallback(on_epoch_end=log_plot)
         self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=loss_log_dir, histogram_freq=1)
+        self.val_callback = MyCustomCallback(self.scaler, X_faint_val, y_faint_val, val_loss_log_dir)
     
         self.callbacks.append(self.tensorboard_callback)
         self.callbacks.append(self.diag_plot_callback)
+        self.callbacks.append(self.val_callback)
         self.callbacks.append(tf_keras.callbacks.EarlyStopping(
             monitor='val_loss', mode='min',
             patience=30, verbose=1,
@@ -153,25 +173,31 @@ class MixtureGaussian(MLStrategy):
         self.create_network()
         
     def create_network(self):
+        class DropoutDict(dict):
+            def __missing__(self, key):
+                return 0 if key == 1 else 0.2
+        dropout_dict = DropoutDict()
+        
         num_components = self.config["num_components"]
         event_shape = [1]
         params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
-
+        dropout_rate = dropout_dict[num_components]
+        
         model = tf_keras.Sequential([Dense(512, kernel_initializer='normal', activation='relu', input_shape=(55,)),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(0.2),
+                                     Dropout(dropout_rate),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(0.2),
+                                     Dropout(dropout_rate),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(0.2),
+                                     Dropout(dropout_rate),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(0.2),
+                                     Dropout(dropout_rate),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(0.2),
+                                     Dropout(dropout_rate),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
                                      Dense(params_size),
@@ -224,5 +250,4 @@ class MLModelContext:
 
     def getModelName(self):
         return self.strategy.getModelName()
-        
     
