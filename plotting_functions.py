@@ -55,6 +55,7 @@ def diag_plot(test_Z, test_Z_pred, test_Z_pred_std, faint_Z, faint_Z_pred, faint
     return fig
 
 def dist_plot(x_input, true_y, model, points=np.arange(0, 6, 0.01)):
+    r = x_input[2]
     y_model = model(x_input)
     y_pred = y_model.mean().numpy()
 

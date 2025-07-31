@@ -13,7 +13,7 @@ config = load_config(config_path)
 for i in range(1,6):
     df = data_frame.DataFrame(filePath, "QSO", data_frame.MaxFiller())
 
-    model = models.MLModelContext(strategy=models.ANNRegressor(df, config))
+    model = models.MLModelContext(strategy=models.MixtureGaussian(df, config))
     model.train()
     model.test_predict()
 
