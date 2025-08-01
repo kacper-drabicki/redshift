@@ -7,6 +7,10 @@ from abc import ABC, abstractmethod
 VALUES_TO_FILL = [-99.0, 99.0]
 MAGNITUDES = ['MAG_GAAP_u','MAG_GAAP_g', 'MAG_GAAP_r','MAG_GAAP_i1', 'MAG_GAAP_i2',
               'MAG_GAAP_Z', 'MAG_GAAP_Y','MAG_GAAP_J', 'MAG_GAAP_H','MAG_GAAP_Ks']
+
+MAG_ERRS = ['MAGERR_GAAP_u','MAGERR_GAAP_g','MAGERR_GAAP_r','MAGERR_GAAP_i1','MAGERR_GAAP_i2',
+            'MAGERR_GAAP_Z','MAGERR_GAAP_Y','MAGERR_GAAP_J', 'MAGERR_GAAP_H','MAGERR_GAAP_Ks']
+
 COLORS = ['u-g', 'u-r', 'u-i1', 'u-i2', 'u-Z', 'u-Y','u-J', 'u-H', 'u-Ks', 'g-r', 'g-i1', 'g-i2',
           'g-Z', 'g-Y', 'g-J', 'g-H','g-Ks', 'r-i1', 'r-i2', 'r-Z', 'r-Y', 'r-J', 'r-H', 'r-Ks', 
           'i1-i2','i1-Z', 'i1-Y', 'i1-J', 'i1-H', 'i1-Ks', 'i2-Z', 'i2-Y', 'i2-J', 'i2-H','i2-Ks', 
