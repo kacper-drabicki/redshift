@@ -14,8 +14,7 @@ for i in range(1,6):
     df = data_frame.DataFrame(filePath, "QSO", data_frame.MaxFiller())
 
     model = models.MLModelContext(strategy=models.MixtureGaussian(df, config))
-    model.train()
+    model.load_weights(f"../models/experiment2/MG_{config["num_components"]}_components_{i}/variables/variables")
     model.test_predict()
 
-    model.strategy.network.save(f"../models/experiment2/{model.getModelName()}_{i}")
-    df.data.to_csv(f"../dataframes/experiment2/{model.getModelName()}_{i}.csv")
+    df.data.to_csv(f"../dataframes/experiment2/{model.getModelName()}_{i}_mode.csv")

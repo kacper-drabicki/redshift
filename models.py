@@ -32,6 +32,10 @@ class MLStrategy(ABC):
     def getModelName(self):
         pass
 
+    @abstractmethod
+    def load_weights(self, path):
+        pass
+
 class XGBRegressor(MLStrategy):
     def __init__(self, dataFrame):
         super().__init__(dataFrame)
@@ -171,6 +175,7 @@ class MixtureGaussian(MLStrategy):
         ))
     
         self.create_network()
+        self.scaler.fit(self.X_train)
         
     def create_network(self):
         class DropoutDict(dict):
@@ -210,10 +215,12 @@ class MixtureGaussian(MLStrategy):
                       loss=negloglik)
         
         self.network = model
-        
 
+    def load_weights(self, path):
+        self.network.load_weights(path).expect_partial()
+        
     def train(self):
-        X_train = self.scaler.fit_transform(self.X_train)
+        X_train = self.scaler.transform(self.X_train)
         X_val = self.scaler.transform(self.X_val)
         
         history = self.network.fit(X_train, self.y_train, validation_data=(X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
@@ -230,6 +237,22 @@ class MixtureGaussian(MLStrategy):
         self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
         self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
 
+        ## DOMINANTA
+        # indexes = self.X_test.index
+        # X_test = self.scaler.transform(self.X_test)
+        # y_model = self.network(X_test)
+        # grid = np.arange(-1, 10, 0.01)
+        # eval_grid = []
+        # for point in grid:
+        #     eval_grid.append(y_model.log_prob(point).numpy())
+        # eval_grid = np.array(eval_grid).T
+        # modes_idx = np.argmax(eval_grid, axis=1)
+        # y_std = y_model.stddev().numpy()
+        
+        # self.dataFrame.data.loc[indexes, "Z_pred"] = grid[modes_idx]
+        # self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
+        # self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
+
     def getModelName(self):
         return f"MG_{self.config["num_components"]}_components"
         
@@ -241,6 +264,9 @@ class MLModelContext:
 
     def set_strategy(self, strategy:MLStrategy):
         self.strategy = strategy
+
+    def load_weights(self, path):
+        self.strategy.load_weights(path)
 
     def train(self):
         self.strategy.train()
