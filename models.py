@@ -66,7 +66,11 @@ class ANNRegressor(MLStrategy):
                                                            patience=30, verbose=1, start_from_epoch=1))
 
         self.create_network()
+        self.scaler.fit(self.X_train)
         
+    def load_weights(self, path):
+        self.network.load_weights(path).expect_partial()
+    
     def create_network(self):
         model = tf_keras.Sequential()
         model.add(tf_keras.layers.Dense(512, kernel_initializer='normal', activation='relu', input_dim=55))
@@ -79,10 +83,10 @@ class ANNRegressor(MLStrategy):
         self.network = model
 
     def train(self):
-        self.X_train = self.scaler.fit_transform(self.X_train)
-        self.X_val = self.scaler.transform(self.X_val)
+        X_train = self.scaler.transform(self.X_train)
+        X_val = self.scaler.transform(self.X_val)
         
-        self.network.fit(self.X_train, self.y_train, validation_data=(self.X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
+        history = self.network.fit(X_train, self.y_train, validation_data=(X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
                          callbacks=self.callbacks, verbose=0)
         
     def test_predict(self):

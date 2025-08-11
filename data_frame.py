@@ -56,6 +56,7 @@ class DataFrame:
             self.data = self.data.replace(VALUES_TO_FILL, np.nan)
             self.data["split"] = "train"
             self.data["faint"] = False
+            self.data["has_missing"] = self.data.isna().any(axis=1)
             self.is_faint()
             self.fill()
             self.make_colors()
