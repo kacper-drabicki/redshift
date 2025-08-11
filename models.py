@@ -73,9 +73,9 @@ class ANNRegressor(MLStrategy):
     
     def create_network(self):
         model = tf_keras.Sequential()
-        model.add(tf_keras.layers.Dense(512, kernel_initializer='normal', activation='relu', input_dim=55))
-        for i in range(11):
-            model.add(tf_keras.layers.Dense(512, kernel_initializer='normal', activation='relu'))
+        model.add(tf_keras.layers.Dense(256, kernel_initializer='normal', activation='relu', input_dim=55))
+        for i in range(10):
+            model.add(tf_keras.layers.Dense(256, kernel_initializer='normal', activation='relu'))
         model.add(tf_keras.layers.Dense(1))
 
         model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=self.lr),
