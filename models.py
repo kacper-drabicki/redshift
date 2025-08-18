@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from tf_keras.layers import Dense, Dropout
+from tensorflow_probability.layers import DenseFlipout
 from plotting_functions import diag_plot, dist_plot
 from utils import plot_to_image
 
@@ -240,25 +241,104 @@ class MixtureGaussian(MLStrategy):
         self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
         self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
         self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
-
-        ## DOMINANTA
-        # indexes = self.X_test.index
-        # X_test = self.scaler.transform(self.X_test)
-        # y_model = self.network(X_test)
-        # grid = np.arange(-1, 10, 0.01)
-        # eval_grid = []
-        # for point in grid:
-        #     eval_grid.append(y_model.log_prob(point).numpy())
-        # eval_grid = np.array(eval_grid).T
-        # modes_idx = np.argmax(eval_grid, axis=1)
-        # y_std = y_model.stddev().numpy()
         
-        # self.dataFrame.data.loc[indexes, "Z_pred"] = grid[modes_idx]
-        # self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
-        # self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy())
-
     def getModelName(self):
         return f"MG_{self.config["num_components"]}_components"
+
+
+class BayesianNN(MLStrategy):
+    def __init__(self, dataFrame, config):
+        super().__init__(dataFrame)
+        self.config = config
+        self.network = None
+        self.scaler = StandardScaler()
+        self.epochs = 300
+        self.batch_size = 128
+        self.lr = 0.0001
+        self.callbacks = []
+      
+        timestamp = datetime.datetime.now().strftime("-%m%d-%H-%M")
+        loss_log_dir = f"../logs/fit/loss/{self.getModelName()}{timestamp}"
+        self.tensorboard_callback = tf_keras.callbacks.TensorBoard(log_dir=loss_log_dir, histogram_freq=1)
+    
+        self.callbacks.append(self.tensorboard_callback)
+        self.callbacks.append(tf_keras.callbacks.EarlyStopping(
+            monitor='val_loss', mode='min',
+            patience=30, verbose=1,
+            start_from_epoch=1, restore_best_weights=True
+        ))
+    
+        self.create_network()
+        self.scaler.fit(self.X_train)
+
+    def create_network(self):        
+        num_components = self.config["num_components"]
+        event_shape = [1]
+        params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
+        
+        model = tf_keras.Sequential([Dense(512, kernel_initializer='normal', activation='relu', input_shape=(55,)),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dropout(dropout_rate),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dropout(dropout_rate),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dropout(dropout_rate),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dropout(dropout_rate),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dropout(dropout_rate),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dense(512, kernel_initializer='normal', activation='relu'),
+                                     Dense(params_size),
+                                     tfp.layers.MixtureNormal(num_components, event_shape)])
+        
+        
+        negloglik = tf.autograph.experimental.do_not_convert(lambda y, p_y: -p_y.log_prob(y))
+
+        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=self.lr),
+                      loss=negloglik)
+        
+        self.network = model
+
+    def load_weights(self, path):
+        self.network.load_weights(path).expect_partial()
+        
+    def train(self):
+        X_train = self.scaler.transform(self.X_train)
+        X_val = self.scaler.transform(self.X_val)
+        
+        history = self.network.fit(X_train, self.y_train, validation_data=(X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
+                         callbacks=self.callbacks, verbose=0)
+
+    def test_predict(self):
+        indexes = self.X_test.index
+        X_test = self.scaler.transform(self.X_test)
+        means = []
+        stds = []
+        for _ in range(10):
+            y_model = self.network(X_test)
+            y_pred = y_model.mean().numpy()
+            y_std = y_model.stddev().numpy()
+            means.append(y_pred)
+            means.append(y_std)
+
+        y_pred = np.array(means).mean(axis=0)
+        y_std = np.sum(np.array(stds) ** 2 / 10, axis=0)
+        y_mean_std = np.array(means).std(axis=0)
+        y_std = np.sqrt(y_std + y_mean_std ** 2)
+        
+        self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
+        self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
+        self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()) # MAKE IT MEAN VALUE OF LOG PROB
+        
+    def getModelName(self):
+        return "BayesianNN"
+
+    
         
 
         
