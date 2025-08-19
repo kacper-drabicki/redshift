@@ -7,8 +7,7 @@ import datetime
 from abc import ABC, abstractmethod
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from tf_keras.layers import Dense, Dropout
-from tensorflow_probability.layers import DenseFlipout
+from tf_keras.layers import Dense, Dropout, BatchNormalization
 from plotting_functions import diag_plot, dist_plot
 from utils import plot_to_image
 
@@ -252,7 +251,7 @@ class BayesianNN(MLStrategy):
         self.config = config
         self.network = None
         self.scaler = StandardScaler()
-        self.epochs = 300
+        self.epochs = 1000
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
@@ -272,34 +271,49 @@ class BayesianNN(MLStrategy):
         self.scaler.fit(self.X_train)
 
     def create_network(self):        
-        num_components = self.config["num_components"]
+        num_components = 3
         event_shape = [1]
         params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
         
         model = tf_keras.Sequential([Dense(512, kernel_initializer='normal', activation='relu', input_shape=(55,)),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(dropout_rate),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(dropout_rate),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(dropout_rate),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(dropout_rate),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
-                                     Dropout(dropout_rate),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
+                                     BatchNormalization(),
                                      Dense(512, kernel_initializer='normal', activation='relu'),
+                                     BatchNormalization(),
+                                     tfp.layers.DenseFlipout(256, activation='relu',
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0],
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0]),
+                                     tfp.layers.DenseFlipout(128, activation='relu',
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0],
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0]),
                                      Dense(params_size),
                                      tfp.layers.MixtureNormal(num_components, event_shape)])
         
         
         negloglik = tf.autograph.experimental.do_not_convert(lambda y, p_y: -p_y.log_prob(y))
 
-        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=self.lr),
+        lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(0.0001, 18760, 0.95,staircase=False)
+        
+        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=lr_schedule, clipnorm=1.0), #self.lr
                       loss=negloglik)
         
         self.network = model
@@ -312,7 +326,7 @@ class BayesianNN(MLStrategy):
         X_val = self.scaler.transform(self.X_val)
         
         history = self.network.fit(X_train, self.y_train, validation_data=(X_val, self.y_val), epochs=self.epochs, batch_size=self.batch_size,
-                         callbacks=self.callbacks, verbose=0)
+                         callbacks=self.callbacks, verbose=1)
 
     def test_predict(self):
         indexes = self.X_test.index
@@ -336,11 +350,7 @@ class BayesianNN(MLStrategy):
         self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()) # MAKE IT MEAN VALUE OF LOG PROB
         
     def getModelName(self):
-        return "BayesianNN"
-
-    
-        
-
+        return "BayesianNN"    
         
 class MLModelContext:
     def __init__(self, strategy:MLStrategy):
