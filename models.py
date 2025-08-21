@@ -274,53 +274,50 @@ class BayesianNN(MLStrategy):
         num_components = 3
         event_shape = [1]
         params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
+
+        scale = self.X_train.shape[0]
+        activation = "tanh"
         
-        model = tf_keras.Sequential([Dense(512, kernel_initializer='normal', activation='relu', input_shape=(55,)),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     Dense(512, kernel_initializer='normal', activation='relu'),
-                                     BatchNormalization(),
-                                     tfp.layers.DenseFlipout(256, activation='relu',
-                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0],
-                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0]),
-                                     tfp.layers.DenseFlipout(128, activation='relu',
-                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0],
-                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / self.X_train.shape[0]),
+        model = tf_keras.Sequential([tfp.layers.DenseFlipout(512, activation=activation,
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                             input_shape=(55,)),
+                                     tfp.layers.DenseFlipout(512, activation=activation,
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale),
+                                     tfp.layers.DenseFlipout(512, activation=activation,
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale),
+                                     tfp.layers.DenseFlipout(512, activation=activation,
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale),
+                                     tfp.layers.DenseFlipout(512, activation=activation,
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale),
+                                     tfp.layers.DenseFlipout(512, activation=activation,
+                                                       kernel_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale,
+                                                       bias_divergence_fn=lambda q,p,ignore: tfp.distributions.kl_divergence(q, p) / scale),
                                      Dense(params_size),
                                      tfp.layers.MixtureNormal(num_components, event_shape)])
         
         
         negloglik = tf.autograph.experimental.do_not_convert(lambda y, p_y: -p_y.log_prob(y))
 
-        lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(0.0001, 18760, 0.95,staircase=False)
-        
-        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=lr_schedule, clipnorm=1.0), #self.lr
+        batch_num = int(self.X_train.shape[0] / self.batch_size)
+
+        boundaries = [15 * batch_num, 50 * batch_num]
+        values = [0.001, 0.0001, 0.00001]
+        lr_schedule = tf_keras.optimizers.schedules.PiecewiseConstantDecay(
+            boundaries, values)
+
+        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=0.001), #self.lr
                       loss=negloglik)
         
         self.network = model
 
     def load_weights(self, path):
         self.network.load_weights(path).expect_partial()
-        
+      
     def train(self):
         X_train = self.scaler.transform(self.X_train)
         X_val = self.scaler.transform(self.X_val)
@@ -329,25 +326,26 @@ class BayesianNN(MLStrategy):
                          callbacks=self.callbacks, verbose=1)
 
     def test_predict(self):
-        indexes = self.X_test.index
-        X_test = self.scaler.transform(self.X_test)
-        means = []
-        stds = []
-        for _ in range(10):
-            y_model = self.network(X_test)
-            y_pred = y_model.mean().numpy()
-            y_std = y_model.stddev().numpy()
-            means.append(y_pred)
-            means.append(y_std)
+        pass
+        # indexes = self.X_test.index
+        # X_test = self.scaler.transform(self.X_test)
+        # means = []
+        # stds = []
+        # for _ in range(10):
+        #     y_model = self.network(X_test)
+        #     y_pred = y_model.mean().numpy()
+        #     y_std = y_model.stddev().numpy()
+        #     means.append(y_pred)
+        #     means.append(y_std)
 
-        y_pred = np.array(means).mean(axis=0)
-        y_std = np.sum(np.array(stds) ** 2 / 10, axis=0)
-        y_mean_std = np.array(means).std(axis=0)
-        y_std = np.sqrt(y_std + y_mean_std ** 2)
+        # y_pred = np.array(means).mean(axis=0)
+        # y_std = np.sum(np.array(stds) ** 2 / 10, axis=0)
+        # y_mean_std = np.array(means).std(axis=0)
+        # y_std = np.sqrt(y_std + y_mean_std ** 2)
         
-        self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
-        self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
-        self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()) # MAKE IT MEAN VALUE OF LOG PROB
+        # self.dataFrame.data.loc[indexes, "Z_pred"] = y_pred
+        # self.dataFrame.data.loc[indexes, "Z_pred_std"] = y_std
+        # self.dataFrame.data.loc[indexes, "Z_spec_prob"] = np.exp(y_model.log_prob(self.y_test.values.reshape(-1,1)).numpy()) # MAKE IT MEAN VALUE OF LOG PROB
         
     def getModelName(self):
         return "BayesianNN"    
