@@ -16,5 +16,5 @@ for i in range(1,2):
     model.train()
     # model.test_predict()
 
-    model.strategy.network.save(f"../models/experiment2/{model.getModelName()}")
+    model.strategy.network.save(f"../models/experiment2/{model.getModelName()}_last_4_layers")
     # df.data.to_csv(f"../dataframes/experiment2/{model.getModelName()}+errs_{i}.csv")

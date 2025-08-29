@@ -14,11 +14,11 @@ class Evaluator():
         self.y_test = self.test_data.loc[~self.test_data["faint"], "Z"]
         self.y_pred = self.test_data.loc[~self.test_data["faint"], "Z_pred"]
         self.y_pred_std = self.test_data.loc[~self.test_data["faint"], "Z_pred_std"]
-        self.test_log_prob = self.test_data.loc[~self.test_data["faint"], "Z_spec_prob"]
+        self.test_log_prob = np.log(self.test_data.loc[~self.test_data["faint"], "Z_spec_prob"])
         self.faint_test = self.test_data.loc[self.test_data["faint"], "Z"]
         self.faint_pred = self.test_data.loc[self.test_data["faint"], "Z_pred"]
         self.faint_pred_std = self.test_data.loc[self.test_data["faint"], "Z_pred_std"]
-        self.faint_log_prob = self.test_data.loc[self.test_data["faint"], "Z_spec_prob"]
+        self.faint_log_prob = np.log(self.test_data.loc[self.test_data["faint"], "Z_spec_prob"])
         
         self.mse = mean_squared_error
         self.r2_score = r2_score
@@ -29,12 +29,12 @@ class Evaluator():
                 {"MSE": self.mse(self.y_test, self.y_pred),
                 "R^2": self.r2_score(self.y_test, self.y_pred),
                 "Redshift error": self.redshift_error(self.y_test, self.y_pred),
-                "NLL": self.test_log_prob.mean()},
+                "NLL": -self.test_log_prob.mean()},
                 "faint":
                 {"MSE": self.mse(self.faint_test, self.faint_pred),
                 "R^2": self.r2_score(self.faint_test, self.faint_pred),
                 "Redshift error": self.redshift_error(self.faint_test, self.faint_pred),
-                "NLL": self.faint_log_prob.mean()}
+                "NLL": -self.faint_log_prob.mean()}
                }).T
 
     def redshift_std(self):
@@ -49,7 +49,7 @@ class Evaluator():
 
         sc1 = ax1.scatter(y_test, y_pred,
                           c=y_pred_std,
-                          cmap='rainbow',
+                          cmap='inferno',
                           s=20,
                           alpha=0.5,
                           vmin=0,
@@ -74,7 +74,7 @@ class Evaluator():
 
         sc2 = ax2.scatter(faint_test, faint_pred,
                           c=faint_pred_std,
-                          cmap='rainbow',
+                          cmap='inferno',
                           s=20,
                           alpha=0.5,
                           vmin=0,
