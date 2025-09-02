@@ -275,6 +275,7 @@ class BayesianNN(MLStrategy):
         event_shape = [1]
         params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
 
+        # Bayesian params
         scale = self.X_train.shape[0]
         activation = "tanh"
         neurons = 512
