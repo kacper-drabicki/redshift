@@ -18,7 +18,7 @@ class Evaluator():
         self.faint_test = self.test_data.loc[self.test_data["faint"], "Z"]
         self.faint_pred = self.test_data.loc[self.test_data["faint"], "Z_pred"]
         self.faint_pred_std = self.test_data.loc[self.test_data["faint"], "Z_pred_std"]
-        self.faint_log_prob = np.log(self.test_data.loc[self.test_data["faint"], "Z_spec_prob"])
+        self.faint_log_prob = np.log(np.clip(self.test_data.loc[self.test_data["faint"], "Z_spec_prob"], 1E-24, None))
         
         self.mse = mean_squared_error
         self.r2_score = r2_score

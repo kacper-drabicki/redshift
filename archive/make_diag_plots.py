@@ -5,11 +5,11 @@ import random
 
 models = ["single","double","triple"]
 
-for model in models:
+for model in [1]:
 
     dataframes = []
     for i in range(1,6):
-        df = pd.read_csv(f"../dataframes/{model}_gauss_{i}", index_col=0)
+        df = pd.read_csv(f"../dataframes/experiment2.1/MG_3_components_{i}.csv", index_col=0)
         df = df.loc[df["split"]=="test",["Z","Z_pred","Z_pred_std","faint"]]
         dataframes.append(df)
 
@@ -55,7 +55,7 @@ for model in models:
     ax1.set_ylim(0,4)
     ax1.set_xlabel("Z$_{spec}$")
     ax1.set_ylabel("Z$_{photo}$")
-    ax1.set_title(f"{model} gaussian on random test dataset")
+    ax1.set_title(f"gaussian on random test dataset")
     ax1.grid(True)
     
     cbar1 = fig1.colorbar(sc1, ax=ax1)
@@ -83,7 +83,7 @@ for model in models:
     ax2.set_ylim(0,4)
     ax2.set_xlabel("Z$_{spec}$")
     ax2.set_ylabel("Z$_{photo}$")
-    ax2.set_title(f"{model} gaussian on faint test dataset")
+    ax2.set_title(f"gaussian on faint test dataset")
     ax2.grid(True)
     
     cbar2 = fig2.colorbar(sc2, ax=ax2)

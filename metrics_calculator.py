@@ -46,11 +46,74 @@ class CalculateMetrics:
             dfs.append(df)
         return dfs
 
+    # Ensemble
+    # def _compute_metrics(self, dfs, subset: str = "all"):
+    #     test_mses, test_r2s = [], []
+    #     faint_mses, faint_r2s = [], []
+    #     test_probs, faint_probs = [], []
+
+    #     for df in dfs:
+    #         if subset == "all":
+    #             test_df = df.loc[~df["faint"]]
+    #             faint_df = df.loc[df["faint"]]
+    #         elif subset == "no_missing":
+    #             test_df = df.loc[(~df["faint"]) & (~df["has_missing"])]
+    #             faint_df = df.loc[(df["faint"]) & (~df["has_missing"])]
+    #         elif subset == "only_missing":
+    #             test_df = df.loc[(~df["faint"]) & (df["has_missing"])]
+    #             faint_df = df.loc[(df["faint"]) & (df["has_missing"])]
+    #         else:
+    #             raise ValueError("subset must be 'all', 'no_missing', or 'only_missing'")
+
+    #         if len(test_df) > 0:
+    #             test_mses.append(self.mse(test_df["Z"], test_df["Z_pred"]))
+    #             test_r2s.append(self.r2(test_df["Z"], test_df["Z_pred"]))
+    #             if "Z_spec_prob" in df.columns:
+    #                 test_probs.append(test_df["Z_spec_prob"])
+    #         else:
+    #             test_mses.append(np.nan)
+    #             test_r2s.append(np.nan)
+
+    #         if len(faint_df) > 0:
+    #             faint_mses.append(self.mse(faint_df["Z"], faint_df["Z_pred"]))
+    #             faint_r2s.append(self.r2(faint_df["Z"], faint_df["Z_pred"]))
+    #             if "Z_spec_prob" in df.columns:
+    #                 faint_probs.append(faint_df["Z_spec_prob"])
+    #         else:
+    #             faint_mses.append(np.nan)
+    #             faint_r2s.append(np.nan)
+
+    #     results = {
+    #         "test": {
+    #             "MSE": np.nanmean(test_mses),
+    #             "R^2": np.nanmean(test_r2s),
+    #             "NLL": None,
+    #         },
+    #         "faint": {
+    #             "MSE": np.nanmean(faint_mses),
+    #             "R^2": np.nanmean(faint_r2s),
+    #             "NLL": None,
+    #         },
+    #     }
+
+    #     if test_probs and faint_probs:
+    #         epsilon = 1E-38
+    #         test_prob_array = np.array([prob.values for prob in test_probs])
+    #         faint_prob_array = np.array([prob.values for prob in faint_probs])
+
+    #         test_mean_prob = np.clip(test_prob_array.mean(axis=0), epsilon, None)
+    #         faint_mean_prob = np.clip(faint_prob_array.mean(axis=0), epsilon, None)
+
+    #         results["test"]["NLL"] = -np.log(test_mean_prob).mean()
+    #         results["faint"]["NLL"] = -np.log(faint_mean_prob).mean()
+
+    #     return results
+
     def _compute_metrics(self, dfs, subset: str = "all"):
         test_mses, test_r2s = [], []
         faint_mses, faint_r2s = [], []
         test_probs, faint_probs = [], []
-
+    
         for df in dfs:
             if subset == "all":
                 test_df = df.loc[~df["faint"]]
@@ -63,7 +126,7 @@ class CalculateMetrics:
                 faint_df = df.loc[(df["faint"]) & (df["has_missing"])]
             else:
                 raise ValueError("subset must be 'all', 'no_missing', or 'only_missing'")
-
+    
             if len(test_df) > 0:
                 test_mses.append(self.mse(test_df["Z"], test_df["Z_pred"]))
                 test_r2s.append(self.r2(test_df["Z"], test_df["Z_pred"]))
@@ -72,7 +135,7 @@ class CalculateMetrics:
             else:
                 test_mses.append(np.nan)
                 test_r2s.append(np.nan)
-
+    
             if len(faint_df) > 0:
                 faint_mses.append(self.mse(faint_df["Z"], faint_df["Z_pred"]))
                 faint_r2s.append(self.r2(faint_df["Z"], faint_df["Z_pred"]))
@@ -81,31 +144,35 @@ class CalculateMetrics:
             else:
                 faint_mses.append(np.nan)
                 faint_r2s.append(np.nan)
-
+    
         results = {
             "test": {
                 "MSE": np.nanmean(test_mses),
                 "R^2": np.nanmean(test_r2s),
-                "NLL": None,
+                "NLL_mean": None,
             },
             "faint": {
                 "MSE": np.nanmean(faint_mses),
                 "R^2": np.nanmean(faint_r2s),
-                "NLL": None,
+                "NLL_mean": None,
             },
         }
-
+    
         if test_probs and faint_probs:
             epsilon = 1E-38
             test_prob_array = np.array([prob.values for prob in test_probs])
             faint_prob_array = np.array([prob.values for prob in faint_probs])
-
-            test_mean_prob = np.clip(test_prob_array.mean(axis=0), epsilon, None)
-            faint_mean_prob = np.clip(faint_prob_array.mean(axis=0), epsilon, None)
-
-            results["test"]["NLL"] = -np.log(test_mean_prob).mean()
-            results["faint"]["NLL"] = -np.log(faint_mean_prob).mean()
-
+    
+            # Per-run NLLs
+            test_run_nlls = [-np.log(np.clip(arr, epsilon, None)).mean()
+                             for arr in test_prob_array]
+            faint_run_nlls = [-np.log(np.clip(arr, epsilon, None)).mean()
+                              for arr in faint_prob_array]
+    
+            # Average across runs
+            results["test"]["NLL_mean"] = np.mean(test_run_nlls)
+            results["faint"]["NLL_mean"] = np.mean(faint_run_nlls)
+    
         return results
 
     def _save_results(self, results, model_name, suffix):
