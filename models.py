@@ -212,39 +212,6 @@ class MixtureGaussian(MLStrategy):
                                      Dense(params_size),
                                      tfp.layers.MixtureNormal(num_components, event_shape)])
         
-        ## Added batch normalization
-        # model = tf_keras.Sequential([Dense(512, kernel_initializer='normal', activation='relu', input_shape=(55,)), 
-        #                              BatchNormalization(),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dropout(dropout_rate),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'),
-        #                              BatchNormalization(),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'),
-        #                              BatchNormalization(),
-        #                              Dropout(dropout_rate),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dropout(dropout_rate), 
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dropout(dropout_rate), 
-        #                              Dense(512, kernel_initializer='normal', activation='relu'),
-        #                              BatchNormalization(),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dropout(dropout_rate), 
-        #                              Dense(512, kernel_initializer='normal', activation='relu'), 
-        #                              BatchNormalization(),
-        #                              Dense(512, kernel_initializer='normal', activation='relu'),
-        #                              BatchNormalization(),
-        #                              Dense(params_size), 
-        #                              tfp.layers.MixtureNormal(num_components, event_shape)])
-        
         
         negloglik = tf.autograph.experimental.do_not_convert(lambda y, p_y: -p_y.log_prob(y))
 
@@ -284,7 +251,7 @@ class BayesianNN(MLStrategy):
         self.config = config
         self.network = None
         self.scaler = StandardScaler()
-        self.epochs = 1000
+        self.epochs = 2000
         self.batch_size = 128
         self.lr = 0.0001
         self.callbacks = []
@@ -304,11 +271,11 @@ class BayesianNN(MLStrategy):
         self.scaler.fit(self.X_train)
 
     def create_network(self):        
-        num_components = 3
+        num_components = self.config["num_components"]
         event_shape = [1]
         params_size = tfp.layers.MixtureNormal.params_size(num_components, event_shape)
 
-        # Bayesian params
+        # Bayesian layers params
         scale = self.X_train.shape[0]
         activation = "tanh"
         neurons = 512
@@ -343,18 +310,16 @@ class BayesianNN(MLStrategy):
                                      Dense(params_size),
                                      tfp.layers.MixtureNormal(num_components, event_shape)])
 
-        
-        
         negloglik = tf.autograph.experimental.do_not_convert(lambda y, p_y: -p_y.log_prob(y))
 
         batch_num = int(self.X_train.shape[0] / self.batch_size)
 
-        boundaries = [200 * batch_num] #, 50 * batch_num]
+        boundaries = [150 * batch_num] #, 50 * batch_num]
         values = [0.001, 0.0001] # ,0.00001]
-        lr_schedule = tf_keras.optimizers.schedules.PiecewiseConstantDecay(
+        self.lr = tf_keras.optimizers.schedules.PiecewiseConstantDecay(
             boundaries, values)
 
-        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=lr_schedule), #self.lr
+        model.compile(optimizer=tf_keras.optimizers.Adam(learning_rate=self.lr), #self.lr
                       loss=negloglik)
         
         self.network = model

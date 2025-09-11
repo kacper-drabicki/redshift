@@ -9,12 +9,12 @@ config_path = "configs/config.yml"
 
 config = load_config(config_path)
 
-for i in range(2,4):
+for i in range(4,7):
     df = data_frame.DataFrame(filePath, "QSO", data_frame.MaxFiller())
 
     model = models.MLModelContext(strategy=models.BayesianNN(df, config))
     model.train()
     model.test_predict()
 
-    model.strategy.network.save(f"../models/experiment2/{model.getModelName()}_last_3_layers_{i}")
-    df.data.to_csv(f"../dataframes/experiment2.1/BNN_{i}.csv")
+    model.strategy.network.save(f"../models/experiment2/{model.getModelName()}_{i}")
+    df.data.to_csv(f"../dataframes/experiment2.1/{model.getModelName()}_{i}.csv")
