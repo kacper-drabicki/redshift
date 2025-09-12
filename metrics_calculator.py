@@ -16,6 +16,13 @@ class CalculateMetrics:
     def _log(self, *args):
         if self.verbose:
             print(*args)
+    
+    ## Evaluating every model seperately 
+    # def _group_files_by_model(self):
+    #     """Treat each CSV file as its own 'model' for separate evaluation."""
+    #     files = [f for f in os.listdir(self.data_dir) if f.endswith(".csv")]
+    #     groups = {f: [f] for f in files}  # each file is its own group
+    #     return groups
 
     def _group_files_by_model(self):
         """Group all CSV files in the folder by model name (before last _<int>)."""
