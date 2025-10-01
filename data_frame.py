@@ -114,6 +114,9 @@ class DataFrame:
     
     def get_faint_test_dataset(self):
         return self.data[(self.data["split"] == "test") & (self.data["faint"])][self.features], self.data[(self.data["split"] == "test") & (self.data["faint"])]["Z"]
+
+    def load_df(self, filePath):
+        self.data = pd.read_csv(filePath, index_col=0)
         
 
 
