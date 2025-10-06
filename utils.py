@@ -3,6 +3,8 @@ import io
 import tensorflow as tf
 import yaml
 
+import models
+
 def plot_to_image(figure):
   buf = io.BytesIO()
   plt.savefig(buf, format='png')
@@ -16,3 +18,8 @@ def load_config(config_path):
     with open(config_path, 'r') as file:
         config = yaml.full_load(file)
     return config
+
+def load_model(modelPath, modelStrategy, df, config):
+    model = models.MLModelContext(strategy=modelStrategy(df, config))
+    model.load_weights(modelPath)
+    return model.strategy.network
