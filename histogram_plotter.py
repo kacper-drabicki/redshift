@@ -61,7 +61,7 @@ class HistPlotter:
         
         plt.figure(figsize=(9,7.5))
         plt.plot(BIN_CENTERS, mean, drawstyle='steps-mid',  color="orange", label=f'Pred')
-        plt.plot(BIN_CENTERS, self.error_model(mean), label="Model error")
+        plt.fill_between(BIN_CENTERS, mean-self.error_model(mean), mean+self.error_model(mean), color="blue", alpha=0.3)
         plt.fill_between(BIN_CENTERS, mean-std, mean+std, color="orange", alpha=0.3)
         plt.hist(self.y, bins=BINS, histtype="step", density=True, color="blue", linestyle="--",label="True")
         plt.xlabel('Redshift Z')
@@ -90,6 +90,6 @@ class HistPlotter:
         chi_square = self.calculate_chi_square(mean, std, self.y)
         print("Chi^2:",chi_square)
         
-        self.plot_pdf(mean, std, f"{self.modelName} with 3 components - {self.datasetType} test dataset")
+        self.plot_pdf(mean, std, f"{self.modelName} with 3 components - {self.datasetType} cluster")
 
     
